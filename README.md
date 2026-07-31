@@ -13,7 +13,7 @@ An interactive, single-file guide for deploying a local AI stack with [LiteLLM](
 1. Push `index.html` to the `main` branch (root of the repo).
 2. In the repo, go to **Settings → Pages**.
 3. Under **Build and deployment**, set **Source** to `Deploy from a branch`, branch `main`, folder `/ (root)`.
-4. Save. GitHub will publish it at `https://solopass.github.io/LiteLLM-Setup-Script-Guide/` within a minute or two.
+4. Save. GitHub will publish it at `solopass.github.io/LiteLLM-Setup-Script-Guide` within a minute or two.
 
 ## Notes
 
