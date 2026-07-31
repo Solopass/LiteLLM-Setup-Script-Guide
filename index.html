@@ -1,0 +1,1069 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A comprehensive, interactive guide to deploying a local AI stack using LiteLLM, Open WebUI, and free tier APIs on Windows, Mac, and Linux.">
+    <title>Local AI Stack Deployment Guide</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', "Liberation Mono", "Courier New", 'monospace'] },
+                    colors: {
+                        brand: { 50: '#eff6ff', 100: '#dbeafe', 200: '#bfdbfe', 300: '#93c5fd', 400: '#60a5fa', 500: '#3b82f6', 600: '#2563eb', 700: '#1d4ed8', 800: '#1e40af', 900: '#1e3a8a' },
+                        dark: { 900: '#0f172a', 800: '#1e293b', 700: '#334155' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        ::selection { background-color: #3b82f6; color: white; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+        .dark .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #475569; }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+        .dark .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+        }
+
+        /* Fallback Animation */
+        @keyframes cascade {
+            0% { opacity: 0; transform: translateY(-10px); }
+            20% { opacity: 1; transform: translateY(0); }
+            80% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(10px); }
+        }
+        .animate-cascade-1 { animation: cascade 4s infinite; animation-delay: 0s; }
+        .animate-cascade-2 { animation: cascade 4s infinite; animation-delay: 1.5s; }
+        .animate-cascade-3 { animation: cascade 4s infinite; animation-delay: 3s; }
+
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fade-in 0.5s ease-out forwards; }
+
+        /* Print Styles */
+        @media print {
+            .no-print { display: none !important; }
+            body { background: white !important; color: black !important; }
+            .glass-panel { border: 1px solid #ccc !important; background: none !important; box-shadow: none !important; }
+        }
+    </style>
+    <script>
+        // Force Dark Mode by default on first load
+        if (localStorage.getItem('color-theme') === 'light') {
+            document.documentElement.classList.remove('dark');
+        } else {
+            document.documentElement.classList.add('dark');
+            localStorage.setItem('color-theme', 'dark'); // Save preference
+        }
+    </script>
+</head>
+<body class="bg-slate-50 dark:bg-dark-900 text-slate-800 dark:text-slate-200 transition-colors duration-300 antialiased pb-24 relative">
+
+    <!-- Reading Progress Bar -->
+    <div id="reading-progress" class="fixed top-0 left-0 h-1 bg-brand-500 z-50 transition-all duration-150 no-print" style="width: 0%;"></div>
+
+    <!-- Search Modal (Cmd+K) -->
+    <div id="search-modal" class="fixed inset-0 z-50 hidden no-print" role="dialog" aria-modal="true">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="closeSearch()"></div>
+        <div class="absolute top-20 left-1/2 -translate-x-1/2 w-full max-w-2xl bg-white dark:bg-dark-800 rounded-2xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden transform transition-all">
+            <div class="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center gap-3">
+                <i data-feather="search" class="text-gray-400"></i>
+                <input type="text" id="search-input" placeholder="Search documentation..." class="w-full bg-transparent border-none focus:outline-none text-lg text-gray-800 dark:text-gray-200 placeholder-gray-400">
+                <kbd class="hidden sm:inline-block bg-gray-100 dark:bg-dark-900 text-gray-500 text-xs px-2 py-1 rounded border border-gray-200 dark:border-gray-700">ESC</kbd>
+            </div>
+            <div id="search-results" class="max-h-96 overflow-y-auto p-2">
+                <!-- Results injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Nav -->
+    <nav class="lg:hidden sticky top-0 z-40 bg-white/80 dark:bg-dark-900/80 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 p-4 flex justify-between items-center no-print" aria-label="Mobile">
+        <div class="font-bold text-xl flex items-center gap-2">
+            <i data-feather="cpu" class="text-brand-500"></i> AI Stack
+        </div>
+        <div class="flex items-center gap-4">
+            <button type="button" onclick="openSearch()" class="p-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white rounded-lg focus-visible:ring-2 focus-visible:ring-brand-500 outline-none" aria-label="Search">
+                <i data-feather="search"></i>
+            </button>
+            <button type="button" onclick="toggleTheme()" class="p-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white rounded-lg focus-visible:ring-2 focus-visible:ring-brand-500 outline-none" aria-label="Toggle Dark Mode">
+                <i data-feather="moon" id="theme-toggle-icon-mobile"></i>
+            </button>
+            <button type="button" onclick="toggleMobileMenu()" class="p-2 text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white rounded-lg focus-visible:ring-2 focus-visible:ring-brand-500 outline-none" aria-label="Open Menu">
+                <i data-feather="menu"></i>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Mobile Menu Dropdown -->
+    <div id="mobile-menu" class="lg:hidden hidden fixed inset-0 z-30 pt-20 bg-white dark:bg-dark-900 no-print overflow-y-auto">
+        <div class="p-6 space-y-6">
+            <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider">Navigation</div>
+            <div class="flex flex-col gap-4" id="mobile-nav-links">
+                <a href="#prerequisites" class="text-gray-600 dark:text-gray-300 font-medium outline-none focus-visible:text-brand-500" onclick="toggleMobileMenu()">1. Prerequisites</a>
+                <a href="#deployment" class="text-gray-600 dark:text-gray-300 font-medium outline-none focus-visible:text-brand-500" onclick="toggleMobileMenu()">2. Deployment</a>
+                <a href="#webui" class="text-gray-600 dark:text-gray-300 font-medium outline-none focus-visible:text-brand-500" onclick="toggleMobileMenu()">3. Open WebUI</a>
+                <a href="#daily-use" class="text-gray-600 dark:text-gray-300 font-medium outline-none focus-visible:text-brand-500" onclick="toggleMobileMenu()">4. Daily Use</a>
+                <a href="#cost" class="text-gray-600 dark:text-gray-300 font-medium outline-none focus-visible:text-brand-500" onclick="toggleMobileMenu()">5. Cost &amp; Fallbacks</a>
+                <a href="#troubleshooting" class="text-gray-600 dark:text-gray-300 font-medium outline-none focus-visible:text-brand-500" onclick="toggleMobileMenu()">6. Troubleshooting</a>
+                <a href="#ollama" class="text-gray-600 dark:text-gray-300 font-medium outline-none focus-visible:text-brand-500" onclick="toggleMobileMenu()">7. Local Ollama</a>
+                <a href="#advanced-litellm" class="text-gray-600 dark:text-gray-300 font-medium outline-none focus-visible:text-brand-500" onclick="toggleMobileMenu()">8. Caching &amp; Guardrails</a>
+                <a href="#config-builder" class="text-brand-600 dark:text-brand-400 font-medium outline-none focus-visible:ring-2 focus-visible:ring-brand-500 p-1 rounded" onclick="toggleMobileMenu()">9. Config Builder</a>
+                <a href="#cheat-sheet" class="text-brand-600 dark:text-brand-400 font-medium outline-none focus-visible:ring-2 focus-visible:ring-brand-500 p-1 rounded" onclick="toggleMobileMenu()">10. Model Cheat Sheet</a>
+                <a href="#master-script" class="text-brand-600 dark:text-brand-400 font-medium outline-none focus-visible:ring-2 focus-visible:ring-brand-500 p-1 rounded" onclick="toggleMobileMenu()">11. Master Script</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="flex max-w-7xl mx-auto">
+        <!-- Desktop Sidebar -->
+        <aside class="hidden lg:block w-72 shrink-0 h-screen sticky top-0 overflow-y-auto border-r border-gray-200 dark:border-gray-800 p-6 no-print custom-scrollbar">
+            <div class="flex items-center justify-between mb-8">
+                <div class="font-bold text-xl flex items-center gap-2">
+                    <div class="bg-brand-500 p-2 rounded-lg text-white">
+                        <i data-feather="cpu" class="w-5 h-5"></i>
+                    </div>
+                    Local AI Stack
+                </div>
+            </div>
+
+            <!-- Search Button -->
+            <button type="button" onclick="openSearch()" class="w-full flex items-center justify-between bg-gray-100 dark:bg-dark-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 px-4 py-2.5 rounded-lg mb-8 transition-colors text-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-brand-500">
+                <span class="flex items-center gap-2"><i data-feather="search" class="w-4 h-4"></i> Search...</span>
+                <kbd class="hidden xl:inline-block text-xs border border-gray-300 dark:border-gray-600 rounded px-1.5 py-0.5">⌘K</kbd>
+            </button>
+
+            <!-- Setup Progress Widget -->
+            <div class="mb-8 p-4 bg-brand-50 dark:bg-brand-900/10 rounded-xl border border-brand-100 dark:border-brand-900/30">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="text-xs font-bold text-brand-700 dark:text-brand-400 uppercase tracking-wider">Setup Progress</h3>
+                    <span id="progress-text" class="text-xs font-semibold text-brand-600 dark:text-brand-500">0/3</span>
+                </div>
+                <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                    <div id="progress-bar" class="bg-brand-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="space-y-1 text-sm font-medium" id="desktop-nav-links" aria-label="Sections">
+                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 mt-6">Getting Started</p>
+                <a href="#prerequisites" class="block px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-dark-800 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand-500" data-scrollspy>1. Prerequisites</a>
+                <a href="#deployment" class="block px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-dark-800 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand-500" data-scrollspy>2. Deployment</a>
+                <a href="#webui" class="block px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-dark-800 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand-500" data-scrollspy>3. Open WebUI</a>
+                <a href="#daily-use" class="block px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-dark-800 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand-500" data-scrollspy>4. Daily Use</a>
+
+                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 mt-6">Advanced Routing</p>
+                <a href="#cost" class="block px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-dark-800 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand-500" data-scrollspy>5. Cost &amp; Fallbacks</a>
+                <a href="#troubleshooting" class="block px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-dark-800 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand-500" data-scrollspy>6. Troubleshooting</a>
+                <a href="#ollama" class="block px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-dark-800 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand-500" data-scrollspy>7. Local Ollama</a>
+                <a href="#advanced-litellm" class="block px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-dark-800 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand-500" data-scrollspy>8. Caching &amp; Guardrails</a>
+
+                <p class="text-xs font-semibold text-brand-500 uppercase tracking-wider mb-3 mt-6">Tools &amp; Generators</p>
+                <a href="#config-builder" class="block px-3 py-2 rounded-lg text-brand-600 bg-brand-50 dark:text-brand-400 dark:bg-brand-500/10 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand-500" data-scrollspy>9. Config Builder</a>
+                <a href="#cheat-sheet" class="block px-3 py-2 rounded-lg text-brand-600 bg-brand-50 dark:text-brand-400 dark:bg-brand-500/10 mt-1 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand-500" data-scrollspy>10. Model Cheat Sheet</a>
+                <a href="#master-script" class="block px-3 py-2 rounded-lg text-brand-600 bg-brand-50 dark:text-brand-400 dark:bg-brand-500/10 mt-1 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand-500" data-scrollspy>11. Master Script</a>
+            </nav>
+
+            <div class="mt-12 space-y-4 border-t border-gray-200 dark:border-gray-800 pt-6">
+                <button type="button" onclick="toggleTheme()" class="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand-500">
+                    <i data-feather="moon" id="theme-toggle-icon-desktop" class="w-4 h-4"></i> Toggle Theme
+                </button>
+                <a href="https://github.com/Solopass/LiteLLM-Setup-Script-Guide" target="_blank" rel="noopener noreferrer" class="w-full flex items-center gap-3 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white rounded-lg transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand-500">
+                    <i data-feather="github" class="w-4 h-4"></i> GitHub Repo
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main id="main-content" class="flex-1 w-full min-w-0 animate-fade-in">
+            <div class="max-w-4xl mx-auto p-6 lg:p-12 xl:p-16">
+
+                <!-- Hero Section -->
+                <header class="mb-16 relative">
+                    <div class="absolute -top-20 -left-20 w-64 h-64 bg-brand-500/20 rounded-full blur-3xl -z-10 mix-blend-multiply dark:mix-blend-lighten pointer-events-none"></div>
+                    <div class="flex items-center gap-3 mb-4 text-brand-600 dark:text-brand-400 text-sm font-semibold tracking-wider uppercase">
+                        <i data-feather="server" class="w-4 h-4"></i> Production Ready
+                        <span class="text-gray-400 dark:text-gray-500 mx-1">•</span>
+                        <span id="read-time" class="text-gray-500 dark:text-gray-400 flex items-center gap-1"><i data-feather="clock" class="w-3 h-3"></i> 5 min read</span>
+                    </div>
+                    <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold mb-6 text-gray-900 dark:text-white leading-tight">
+                        Local AI Stack <br/><span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-500 to-purple-500">Deployment Guide</span>
+                    </h1>
+                    <p class="text-lg sm:text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-2xl leading-relaxed">
+                        A complete, end-to-end deployment guide for your new local AI stack. You now have a fully automated system that handles virtual environments, proxy routing, and Docker container management from a single interface.
+                    </p>
+
+                    <!-- Architecture Visualizer -->
+                    <div class="mt-8 p-6 bg-white dark:bg-dark-800 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm hidden sm:block">
+                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4 text-center">System Architecture</h3>
+                        <div class="flex items-center justify-between max-w-2xl mx-auto">
+                            <div class="text-center group">
+                                <div class="w-16 h-16 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center mx-auto mb-2 border border-blue-200 dark:border-blue-800 group-hover:scale-110 transition-transform">
+                                    <i data-feather="monitor" class="text-blue-500 w-8 h-8"></i>
+                                </div>
+                                <span class="text-sm font-medium">Browser</span>
+                            </div>
+                            <div class="flex-1 h-0.5 bg-gradient-to-r from-blue-300 to-brand-300 dark:from-blue-800 dark:to-brand-800 mx-2 relative">
+                                <i data-feather="chevron-right" class="absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 text-gray-400 w-4 h-4"></i>
+                            </div>
+                            <div class="text-center group">
+                                <div class="w-16 h-16 bg-brand-100 dark:bg-brand-900/30 rounded-xl flex items-center justify-center mx-auto mb-2 border border-brand-200 dark:border-brand-800 group-hover:scale-110 transition-transform">
+                                    <i data-feather="layout" class="text-brand-500 w-8 h-8"></i>
+                                </div>
+                                <span class="text-sm font-medium">WebUI<br><span class="text-xs text-gray-500">Port 3000</span></span>
+                            </div>
+                            <div class="flex-1 h-0.5 bg-gradient-to-r from-brand-300 to-purple-300 dark:from-brand-800 dark:to-purple-800 mx-2 relative">
+                                <i data-feather="chevron-right" class="absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 text-gray-400 w-4 h-4"></i>
+                            </div>
+                            <div class="text-center group">
+                                <div class="w-16 h-16 bg-purple-100 dark:bg-purple-900/30 rounded-xl flex items-center justify-center mx-auto mb-2 border border-purple-200 dark:border-purple-800 group-hover:scale-110 transition-transform shadow-[0_0_15px_rgba(168,85,247,0.4)]">
+                                    <i data-feather="git-merge" class="text-purple-500 w-8 h-8"></i>
+                                </div>
+                                <span class="text-sm font-medium">LiteLLM<br><span class="text-xs text-gray-500">Port 4000</span></span>
+                            </div>
+                            <div class="flex-1 h-0.5 bg-gradient-to-r from-purple-300 to-green-300 dark:from-purple-800 dark:to-green-800 mx-2 relative">
+                                <i data-feather="chevron-right" class="absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 text-gray-400 w-4 h-4"></i>
+                            </div>
+                            <div class="text-center group">
+                                <div class="w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-xl flex items-center justify-center mx-auto mb-2 border border-green-200 dark:border-green-800 group-hover:scale-110 transition-transform">
+                                    <i data-feather="cloud" class="text-green-500 w-8 h-8"></i>
+                                </div>
+                                <span class="text-sm font-medium">Free APIs<br><span class="text-xs text-gray-500">Groq/OpenRouter</span></span>
+                            </div>
+                        </div>
+                    </div>
+                </header>
+
+                <!-- Section 1: Prerequisites -->
+                <section id="prerequisites" class="mb-16 scroll-mt-24">
+                    <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><span class="bg-gray-200 dark:bg-dark-800 text-gray-600 dark:text-gray-300 rounded w-8 h-8 flex items-center justify-center text-lg">1</span> Prerequisites: What You Need First</h2>
+                    <p class="mb-4 text-gray-600 dark:text-gray-300">Before running the scripts, verify you have these items ready on your machine. <span class="text-sm italic text-gray-500">(Your progress is saved automatically)</span></p>
+
+                    <ul class="space-y-3">
+                        <li class="flex items-start gap-4 p-4 glass-panel rounded-xl border border-gray-200 dark:border-gray-700 hover:border-brand-300 dark:hover:border-brand-700 transition-colors cursor-pointer group" onclick="toggleCheckbox('check-python')">
+                            <div class="mt-0.5 relative">
+                                <input type="checkbox" id="check-python" class="peer sr-only" onchange="updateProgress()">
+                                <div class="w-6 h-6 border-2 border-gray-300 dark:border-gray-600 rounded peer-checked:bg-brand-500 peer-checked:border-brand-500 transition-colors flex items-center justify-center">
+                                    <i data-feather="check" class="text-white w-4 h-4 opacity-0 peer-checked:opacity-100 transition-opacity"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-gray-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">Python 3.8+</h3>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Must be installed and added to your system PATH.</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start gap-4 p-4 glass-panel rounded-xl border border-gray-200 dark:border-gray-700 hover:border-brand-300 dark:hover:border-brand-700 transition-colors cursor-pointer group" onclick="toggleCheckbox('check-docker')">
+                            <div class="mt-0.5 relative">
+                                <input type="checkbox" id="check-docker" class="peer sr-only" onchange="updateProgress()">
+                                <div class="w-6 h-6 border-2 border-gray-300 dark:border-gray-600 rounded peer-checked:bg-brand-500 peer-checked:border-brand-500 transition-colors flex items-center justify-center">
+                                    <i data-feather="check" class="text-white w-4 h-4 opacity-0 peer-checked:opacity-100 transition-opacity"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-gray-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors flex items-center gap-2">Docker Desktop <span class="px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-full border border-blue-200 dark:border-blue-800 group-hover:bg-blue-200 transition-colors" title="Windows Subsystem for Linux">Windows requires WSL2</span></h3>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Must be installed, open, and the engine actively running (check for the whale icon in your system tray). Windows users: Ensure WSL2 integration is enabled in Settings.</p>
+                            </div>
+                        </li>
+                        <li class="flex items-start gap-4 p-4 glass-panel rounded-xl border border-gray-200 dark:border-gray-700 hover:border-brand-300 dark:hover:border-brand-700 transition-colors cursor-pointer group" onclick="toggleCheckbox('check-keys')">
+                            <div class="mt-0.5 relative">
+                                <input type="checkbox" id="check-keys" class="peer sr-only" onchange="updateProgress()">
+                                <div class="w-6 h-6 border-2 border-gray-300 dark:border-gray-600 rounded peer-checked:bg-brand-500 peer-checked:border-brand-500 transition-colors flex items-center justify-center">
+                                    <i data-feather="check" class="text-white w-4 h-4 opacity-0 peer-checked:opacity-100 transition-opacity"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-gray-900 dark:text-white group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">Your API Keys</h3>
+                                <p class="text-sm text-gray-600 dark:text-gray-400 mt-1">Generate your free tier keys using the Cheat Sheet below. Save them securely.</p>
+                            </div>
+                        </li>
+                    </ul>
+                </section>
+
+                <!-- Section 2: Deployment -->
+                <section id="deployment" class="mb-16 scroll-mt-24">
+                    <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><span class="bg-gray-200 dark:bg-dark-800 text-gray-600 dark:text-gray-300 rounded w-8 h-8 flex items-center justify-center text-lg">2</span> Deployment &amp; Setup</h2>
+                    <div class="space-y-6">
+                        <div class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-gray-700 relative overflow-hidden">
+                            <div class="absolute left-0 top-0 bottom-0 w-1 bg-brand-500"></div>
+                            <h3 class="font-bold text-lg text-gray-900 dark:text-white mb-2">1. Launch the Python GUI</h3>
+                            <p class="text-gray-600 dark:text-gray-300 text-sm mb-4">Run the Master Python script (found at the bottom of this page) to launch your control panel. This will handle everything automatically.</p>
+                            <pre class="bg-gray-900 dark:bg-black text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono border border-gray-700"><code>python ai_stack_gui.py</code></pre>
+                        </div>
+                        <div class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-gray-700 relative overflow-hidden">
+                            <div class="absolute left-0 top-0 bottom-0 w-1 bg-brand-500"></div>
+                            <h3 class="font-bold text-lg text-gray-900 dark:text-white mb-2">2. Initialize Virtual Environment</h3>
+                            <p class="text-gray-600 dark:text-gray-300 text-sm">Click <strong>Button 1</strong> in the GUI. Wait for the terminal log box to confirm that the virtual environment was created and LiteLLM was installed. This isolates the Python packages from the rest of your system.</p>
+                        </div>
+                        <div class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-gray-700 relative overflow-hidden">
+                            <div class="absolute left-0 top-0 bottom-0 w-1 bg-brand-500"></div>
+                            <h3 class="font-bold text-lg text-gray-900 dark:text-white mb-2">3. Start the LiteLLM Proxy</h3>
+                            <p class="text-gray-600 dark:text-gray-300 text-sm">Use the web builder below to generate your config, click <strong>Paste Config</strong> and <strong>Paste .env</strong> in the Python app, and then click <strong>Button 2</strong>. The GUI will automatically start the server on Port 4000 and print the live server logs in the black text box at the bottom of the window.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section 3: Open WebUI -->
+                <section id="webui" class="mb-16 scroll-mt-24">
+                    <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><span class="bg-gray-200 dark:bg-dark-800 text-gray-600 dark:text-gray-300 rounded w-8 h-8 flex items-center justify-center text-lg">3</span> Open WebUI Initialization</h2>
+                    <div class="prose dark:prose-invert max-w-none text-gray-600 dark:text-gray-300">
+                        <p>With your routing proxy running in the Python app, click <strong>Button 3</strong> to launch Open WebUI via Docker. Once the container is running, access it in your browser at <a href="http://localhost:3000" class="text-brand-500 hover:underline outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded" target="_blank" rel="noopener noreferrer">http://localhost:3000</a>.</p>
+                        <ul class="mt-4 space-y-2 list-disc list-inside">
+                            <li><strong>Create Admin Account:</strong> The first screen will ask you to sign up. This account is entirely local to your machine. The first account created automatically becomes the system administrator.</li>
+                            <li><strong>Select a Model:</strong> At the top of the screen, click the drop-down menu. You will see all the models you configured (e.g., <code>groq-llama</code>, <code>nvidia-deepseek</code>).</li>
+                            <li><strong>Start Chatting:</strong> Select a model and send a message. Your prompt leaves Open WebUI, hits your local LiteLLM proxy, gets authenticated, and routes to the correct provider.</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <!-- Section 4: Daily Use -->
+                <section id="daily-use" class="mb-16 scroll-mt-24">
+                    <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><span class="bg-gray-200 dark:bg-dark-800 text-gray-600 dark:text-gray-300 rounded w-8 h-8 flex items-center justify-center text-lg">4</span> Maintenance &amp; Daily Use</h2>
+                    <div class="grid sm:grid-cols-2 gap-6">
+                        <div class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
+                            <h3 class="font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2"><i data-feather="power" class="w-4 h-4 text-red-500"></i> Shutting Down</h3>
+                            <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-2 list-disc list-inside">
+                                <li>Simply click the "X" to close the Python GUI window. It will cleanly terminate the background proxy for you.</li>
+                                <li>Run <code>docker stop open-webui</code> or click Stop in Docker Desktop to power down the frontend.</li>
+                            </ul>
+                        </div>
+                        <div class="glass-panel p-6 rounded-2xl border border-gray-200 dark:border-gray-700 hover:shadow-md transition-shadow">
+                            <h3 class="font-bold text-gray-900 dark:text-white mb-3 flex items-center gap-2"><i data-feather="play-circle" class="w-4 h-4 text-green-500"></i> Starting Up Tomorrow</h3>
+                            <ul class="text-sm text-gray-600 dark:text-gray-400 space-y-2 list-disc list-inside">
+                                <li>You <strong>do not</strong> need to run Setup (Button 1) again.</li>
+                                <li>Just launch the Python script.</li>
+                                <li>Click <strong>Button 2</strong> and then <strong>Button 3</strong>.</li>
+                            </ul>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section 5: Cost & Fallbacks -->
+                <section id="cost" class="mb-16 scroll-mt-24">
+                    <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><span class="bg-gray-200 dark:bg-dark-800 text-gray-600 dark:text-gray-300 rounded w-8 h-8 flex items-center justify-center text-lg">5</span> Automated Fallbacks &amp; Cost</h2>
+                    <p class="mb-6 text-gray-600 dark:text-gray-300 leading-relaxed">The magic of LiteLLM is automated error handling and fallback routing. By structuring your <code>config.yaml</code> with multiple free providers, you essentially create an infinite free-tier API. If Groq hits a rate limit, the request silently shifts to OpenRouter.</p>
+
+                    <div class="bg-gray-900 dark:bg-black rounded-2xl p-6 border border-gray-800 shadow-xl overflow-hidden relative">
+                        <div class="absolute inset-0 bg-gradient-to-r from-brand-500/10 to-purple-500/10"></div>
+                        <div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-4">
+                            <!-- Visual Flowchart -->
+                            <div class="flex flex-col items-center flex-1">
+                                <div class="bg-white text-gray-900 font-bold px-4 py-2 rounded-lg text-sm shadow-sm z-10">Your Prompt</div>
+                                <div class="w-0.5 h-6 bg-gray-500"></div>
+                                <div class="bg-brand-500 text-white font-bold px-4 py-2 rounded-lg text-sm shadow-sm z-10 w-full text-center">LiteLLM Proxy</div>
+                                <div class="w-0.5 h-6 bg-gray-500"></div>
+
+                                <div class="w-full flex items-start gap-4">
+                                    <div class="flex-1 flex flex-col items-center">
+                                        <div class="w-full bg-green-500/20 border border-green-500/50 text-green-400 font-bold px-4 py-2 rounded-lg text-xs text-center z-10">1. Groq (Fastest)</div>
+                                        <div class="text-[10px] text-gray-400 mt-1 bg-gray-800 px-2 py-0.5 rounded animate-pulse">If Rate Limited (429)</div>
+                                    </div>
+                                    <div class="mt-4"><i data-feather="arrow-right" class="text-gray-500"></i></div>
+                                    <div class="flex-1 flex flex-col items-center">
+                                        <div class="w-full bg-yellow-500/20 border border-yellow-500/50 text-yellow-400 font-bold px-4 py-2 rounded-lg text-xs text-center z-10">2. NVIDIA NIM</div>
+                                        <div class="text-[10px] text-gray-400 mt-1 bg-gray-800 px-2 py-0.5 rounded animate-pulse">If API Down (500)</div>
+                                    </div>
+                                    <div class="mt-4"><i data-feather="arrow-right" class="text-gray-500"></i></div>
+                                    <div class="flex-1 flex flex-col items-center">
+                                        <div class="w-full bg-blue-500/20 border border-blue-500/50 text-blue-400 font-bold px-4 py-2 rounded-lg text-xs text-center z-10">3. OpenRouter</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section 6: Troubleshooting -->
+                <section id="troubleshooting" class="mb-16 scroll-mt-24">
+                    <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><span class="bg-gray-200 dark:bg-dark-800 text-gray-600 dark:text-gray-300 rounded w-8 h-8 flex items-center justify-center text-lg">6</span> Common Troubleshooting</h2>
+                    <div class="space-y-4">
+                        <details class="group glass-panel rounded-xl border border-red-200 dark:border-red-900/30 overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-red-500">
+                            <summary class="flex justify-between items-center font-medium cursor-pointer list-none p-4 text-gray-900 dark:text-white bg-red-50 dark:bg-red-900/10 hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors">
+                                <span class="flex items-center gap-2"><i data-feather="alert-circle" class="w-4 h-4 text-red-500"></i> Port 3000 or 4000 is already in use</span>
+                                <span class="transition group-open:rotate-180"><i data-feather="chevron-down" class="w-4 h-4"></i></span>
+                            </summary>
+                            <div class="p-4 text-sm text-gray-600 dark:text-gray-300 border-t border-red-100 dark:border-red-900/30 bg-white dark:bg-dark-800">
+                                If you get a "Port in use" error, another app (like React) is using it, or the proxy didn't close properly last time. Change the Docker port mapping in the Python script to <code>-p 8080:8080</code> to fix WebUI, or restart your computer to flush out any ghost Python processes hoarding Port 4000.
+                            </div>
+                        </details>
+                        <details class="group glass-panel rounded-xl border border-orange-200 dark:border-orange-900/30 overflow-hidden outline-none focus-visible:ring-2 focus-visible:ring-orange-500">
+                            <summary class="flex justify-between items-center font-medium cursor-pointer list-none p-4 text-gray-900 dark:text-white bg-orange-50 dark:bg-orange-900/10 hover:bg-orange-100 dark:hover:bg-orange-900/20 transition-colors">
+                                <span class="flex items-center gap-2"><i data-feather="alert-circle" class="w-4 h-4 text-orange-500"></i> Docker "Daemon not running" error</span>
+                                <span class="transition group-open:rotate-180"><i data-feather="chevron-down" class="w-4 h-4"></i></span>
+                            </summary>
+                            <div class="p-4 text-sm text-gray-600 dark:text-gray-300 border-t border-orange-100 dark:border-orange-900/30 bg-white dark:bg-dark-800">
+                                This means Docker Desktop is closed, or WSL2 is not enabled on Windows. Open Docker Desktop, go to Settings > Resources > WSL Integration, and ensure it is turned on. Keep the app open in the background.
+                            </div>
+                        </details>
+                    </div>
+                </section>
+
+                <!-- Section 7: Local Ollama -->
+                <section id="ollama" class="mb-16 scroll-mt-24">
+                    <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><span class="bg-gray-200 dark:bg-dark-800 text-gray-600 dark:text-gray-300 rounded w-8 h-8 flex items-center justify-center text-lg">7</span> Adding True Local Models (Ollama)</h2>
+                    <p class="mb-4 text-gray-600 dark:text-gray-300">If you have a powerful GPU (like an RTX 3090 or 4090), you can run models entirely offline using Ollama and route them through the exact same LiteLLM proxy.</p>
+                    <ol class="list-decimal list-inside space-y-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-dark-800 p-6 rounded-xl border border-gray-200 dark:border-gray-700">
+                        <li>Download and install <a href="https://ollama.com" target="_blank" rel="noopener noreferrer" class="text-brand-500 hover:underline outline-none focus-visible:ring-2 focus-visible:ring-brand-500 rounded">Ollama</a>.</li>
+                        <li>Open your computer's terminal and run: <code class="bg-gray-200 dark:bg-black px-1 py-0.5 rounded border border-gray-300 dark:border-gray-700">ollama run llama3.1</code></li>
+                        <li>Use the Config Builder below and click "+ Config" on the Ollama row to add it to your <code>config.yaml</code>. LiteLLM will automatically communicate with Ollama on <code>http://localhost:11434</code>.</li>
+                    </ol>
+                </section>
+
+                <!-- Section 8: Advanced LiteLLM -->
+                <section id="advanced-litellm" class="mb-16 scroll-mt-24">
+                    <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><span class="bg-gray-200 dark:bg-dark-800 text-gray-600 dark:text-gray-300 rounded w-8 h-8 flex items-center justify-center text-lg">8</span> Caching &amp; Guardrails (Optional)</h2>
+                    <p class="mb-4 text-gray-600 dark:text-gray-300">LiteLLM isn't just for routing; it's a production-grade gateway. You can add global configurations to your <code>config.yaml</code> to supercharge your stack:</p>
+                    <div class="relative group">
+                        <pre class="bg-gray-900 dark:bg-black text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono border border-gray-700 custom-scrollbar"><code>litellm_settings:
+  cache: true          # Saves money if you ask the same question twice
+  cache_type: "redis"  # Requires a local redis container
+
+  # Guardrails (Requires PII masking setup)
+  pii_masking: true</code></pre>
+                        <button type="button" onclick="copyToClipboard(this)" class="absolute top-2 right-2 p-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500" aria-label="Copy code"><i data-feather="copy" class="w-4 h-4"></i></button>
+                    </div>
+                </section>
+
+                <!-- Section 9: Config Builder -->
+                <section id="config-builder" class="mb-16 scroll-mt-24 relative">
+                    <div class="absolute -z-10 w-full h-full bg-gradient-to-b from-brand-50/50 to-transparent dark:from-brand-900/10 dark:to-transparent rounded-3xl blur-xl"></div>
+                    <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><i data-feather="settings" class="text-brand-500 w-8 h-8"></i> Interactive Config &amp; .env Builder</h2>
+                    <div class="glass-panel p-6 sm:p-8 rounded-2xl border-2 border-brand-200 dark:border-brand-500/30 shadow-lg">
+                        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+                            <p class="text-gray-600 dark:text-gray-300 text-sm leading-relaxed max-w-2xl">Click <strong>+ Config</strong> on any model in the Cheat Sheet below to instantly build your fallback router. The tool automatically generates your <code>config.yaml</code> and a matching <code>.env</code> template.</p>
+                            <button type="button" onclick="clearConfig()" class="text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 font-medium px-4 py-2 bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 rounded-lg transition-colors border border-red-200 dark:border-red-500/20 flex items-center gap-2 flex-shrink-0 outline-none focus-visible:ring-2 focus-visible:ring-red-500">
+                                <i data-feather="trash-2" class="w-3.5 h-3.5"></i> Clear All
+                            </button>
+                        </div>
+
+                        <div class="grid lg:grid-cols-2 gap-6">
+                            <!-- Config YAML -->
+                            <div class="relative group">
+                                <h3 class="font-bold text-sm text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2"><i data-feather="file-text" class="w-4 h-4"></i> config.yaml</h3>
+                                <pre class="bg-gray-900 dark:bg-black text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono border border-gray-700 min-h-[180px] custom-scrollbar"><code id="config-output"># Select models from the Cheat Sheet below...</code></pre>
+                                <button type="button" onclick="copyToClipboard(this)" class="absolute top-9 right-2 p-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500" aria-label="Copy config.yaml"><i data-feather="copy" class="w-4 h-4"></i></button>
+                            </div>
+                            <!-- ENV File -->
+                            <div class="relative group">
+                                <h3 class="font-bold text-sm text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2"><i data-feather="key" class="w-4 h-4"></i> .env (API Keys)</h3>
+                                <pre class="bg-gray-900 dark:bg-black text-gray-100 p-4 rounded-lg overflow-x-auto text-sm font-mono border border-gray-700 min-h-[180px] custom-scrollbar"><code id="env-output"># Associated API Keys will appear here...</code></pre>
+                                <button type="button" onclick="copyToClipboard(this)" class="absolute top-9 right-2 p-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500" aria-label="Copy .env file"><i data-feather="copy" class="w-4 h-4"></i></button>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/10 p-3 rounded-lg border border-amber-200 dark:border-amber-900/30">
+                            <i data-feather="alert-triangle" class="w-4 h-4 flex-shrink-0 mt-0.5"></i>
+                            <p><strong>Security Notice:</strong> Never commit your <code>.env</code> file or API keys to a public GitHub repository. Always add <code>.env</code> to your <code>.gitignore</code> file.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section 10: Model Cheat Sheet -->
+                <section id="cheat-sheet" class="mb-16 scroll-mt-24">
+                    <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><span class="bg-gray-200 dark:bg-dark-800 text-gray-600 dark:text-gray-300 rounded w-8 h-8 flex items-center justify-center text-lg">10</span> Top 14 Free Model Providers</h2>
+
+                    <div class="flex flex-wrap gap-2 mb-4">
+                        <button type="button" onclick="filterModels('all', this)" class="filter-btn active px-3 py-1 text-xs font-semibold rounded-full bg-brand-500 text-white transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand-500">All</button>
+                        <button type="button" onclick="filterModels('fast', this)" class="filter-btn px-3 py-1 text-xs font-semibold rounded-full bg-gray-200 dark:bg-dark-800 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand-500">Ultra-Fast</button>
+                        <button type="button" onclick="filterModels('reasoning', this)" class="filter-btn px-3 py-1 text-xs font-semibold rounded-full bg-gray-200 dark:bg-dark-800 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand-500">Reasoning / R1</button>
+                        <button type="button" onclick="filterModels('local', this)" class="filter-btn px-3 py-1 text-xs font-semibold rounded-full bg-gray-200 dark:bg-dark-800 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand-500">Local (Ollama)</button>
+                    </div>
+
+                    <div class="glass-panel rounded-2xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm">
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm whitespace-nowrap">
+                                <thead class="bg-gray-50 dark:bg-dark-800/50 text-gray-600 dark:text-gray-400 text-xs uppercase tracking-wider">
+                                    <tr>
+                                        <th class="px-6 py-4 font-semibold">Provider / Model</th>
+                                        <th class="px-6 py-4 font-semibold hidden md:table-cell">Best For</th>
+                                        <th class="px-6 py-4 font-semibold text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="models-table-body" class="divide-y divide-gray-200 dark:divide-gray-800">
+                                    <!-- Populated by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Section 11: Master Script -->
+                <section id="master-script" class="mb-24 scroll-mt-24">
+                    <h2 class="text-2xl font-bold mb-6 flex items-center gap-3"><span class="bg-gray-200 dark:bg-dark-800 text-gray-600 dark:text-gray-300 rounded w-8 h-8 flex items-center justify-center text-lg">11</span> The Universal GUI Script</h2>
+                    <div class="glass-panel p-6 rounded-2xl border-2 border-brand-500/20 shadow-lg relative overflow-hidden">
+                        <div class="absolute top-0 right-0 p-4 opacity-10 dark:opacity-5">
+                            <i data-feather="terminal" class="w-32 h-32"></i>
+                        </div>
+                        <p class="text-gray-700 dark:text-gray-300 mb-4 relative z-10 leading-relaxed">
+                            Want to automate everything? Save this as <code class="bg-gray-200 dark:bg-dark-800 px-1 rounded font-mono text-sm border border-gray-300 dark:border-gray-700">ai_stack_gui.py</code>. This Python script uses <code>tkinter</code> to create a graphical interface that works universally on Windows, Mac, and Linux. <strong>Use the Config Builder above, click copy, and then paste directly inside this Python GUI!</strong>
+                        </p>
+
+                        <div class="relative group mt-4">
+                            <pre class="bg-gray-900 dark:bg-black text-gray-100 p-4 rounded-lg overflow-x-auto text-xs font-mono border border-gray-700 custom-scrollbar max-h-[500px]"><code>import tkinter as tk
+from tkinter import scrolledtext
+import subprocess, os, threading, sys
+
+CONFIG_FILE = "config.yaml"
+ENV_FILE = ".env"
+
+class AIStackManager:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Universal AI Stack Manager")
+        self.root.geometry("600x520")
+
+        # UI Elements
+        tk.Label(root, text="Step 1: Paste configurations from the Web Builder", font=("Arial", 10, "bold")).pack(pady=(15,5))
+
+        btn_frame = tk.Frame(root)
+        btn_frame.pack(pady=5)
+        tk.Button(btn_frame, text="📋 Paste config.yaml", command=self.paste_config, bg="#10b981", fg="white", width=20).pack(side=tk.LEFT, padx=5)
+        tk.Button(btn_frame, text="📋 Paste .env (Keys)", command=self.paste_env, bg="#8b5cf6", fg="white", width=20).pack(side=tk.LEFT, padx=5)
+
+        tk.Label(root, text="Step 2: Control Panel", font=("Arial", 10, "bold")).pack(pady=(15,5))
+
+        tk.Button(root, text="1. Setup Python Venv (Runs once)", command=lambda: self.run_bg(self.setup_venv)).pack(pady=2)
+        tk.Button(root, text="2. Start LiteLLM Proxy", command=lambda: self.run_bg(self.start_proxy)).pack(pady=2)
+        tk.Button(root, text="3. Start Open WebUI (Docker)", command=lambda: self.run_bg(self.start_docker)).pack(pady=2)
+
+        tk.Frame(root, height=1, bg="#475569").pack(fill="x", pady=15, padx=20)
+
+        self.log_area = scrolledtext.ScrolledText(root, width=70, height=14, state='disabled', bg="#1e293b", fg="white")
+        self.log_area.pack(pady=5)
+        self.log("Ready. Awaiting commands...")
+
+        # Graceful shutdown handler
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        self.proxy_process = None
+
+    def log(self, msg):
+        self.log_area.config(state='normal')
+        self.log_area.insert(tk.END, msg + "\n")
+        self.log_area.see(tk.END)
+        self.log_area.config(state='disabled')
+
+    def paste_config(self):
+        try:
+            data = self.root.clipboard_get()
+            if "model_list:" in data:
+                with open(CONFIG_FILE, "w") as f: f.write(data)
+                self.log("Success: Saved config.yaml from clipboard!")
+            else:
+                self.log("Error: Clipboard doesn't look like a valid LiteLLM config.")
+        except: self.log("Error: Clipboard is empty.")
+
+    def paste_env(self):
+        try:
+            data = self.root.clipboard_get()
+            if "=" in data or "API_KEY" in data:
+                with open(ENV_FILE, "w") as f: f.write(data)
+                self.log("Success: Saved .env keys from clipboard!")
+            else:
+                self.log("Error: Clipboard doesn't look like a valid .env file.")
+        except: self.log("Error: Clipboard is empty.")
+
+    def run_cmd(self, cmd, is_proxy=False):
+        self.log(f"> {cmd}")
+        try:
+            # We use shell=False for the proxy to prevent Zombie processes from keeping Port 4000 open
+            use_shell = not is_proxy
+            args = cmd if use_shell else cmd.split(" ")
+
+            # bufsize=1 ensures line-by-line real-time streaming in the GUI terminal
+            process = subprocess.Popen(args, shell=use_shell, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+
+            if is_proxy:
+                self.proxy_process = process
+
+            for line in process.stdout:
+                self.root.after(0, self.log, line.strip())
+        except Exception as e:
+            self.root.after(0, self.log, f"Error: {str(e)}")
+
+    def run_bg(self, func): threading.Thread(target=func, daemon=True).start()
+
+    def setup_venv(self):
+        python_cmd = "python" if sys.platform == "win32" else "python3"
+        self.run_cmd(f"{python_cmd} -m venv venv")
+        pip_cmd = "venv\\Scripts\\pip" if sys.platform == "win32" else "venv/bin/pip"
+        self.run_cmd(f"{pip_cmd} install litellm[proxy]")
+
+    def start_proxy(self):
+        if not os.path.exists(CONFIG_FILE):
+            self.log(f"Warning: {CONFIG_FILE} not found. Please paste it first!")
+            return
+        if self.proxy_process and self.proxy_process.poll() is None:
+            self.log("Warning: Proxy is already running!")
+            return
+
+        # Must explicitly define .exe on Windows when shell=False to prevent FileNotFoundError
+        proxy_cmd = "venv\\Scripts\\litellm.exe" if sys.platform == "win32" else "venv/bin/litellm"
+        self.run_cmd(f"{proxy_cmd} --config {CONFIG_FILE}", is_proxy=True)
+
+    def start_docker(self):
+        # Using a volume (-v) ensures users do not lose their chat history when the container stops!
+        # We cleanly remove yesterday's stopped container first so Day 2 boots perfectly.
+        self.log("Initializing Docker environment...")
+        remove_cmd = "docker rm -f open-webui"
+        try: subprocess.run(remove_cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        except: pass
+
+        # CRITICAL: Bridge Docker back to the host machine (LiteLLM) using host.docker.internal
+        # so Open WebUI can successfully see your configured models on Port 4000!
+        self.run_cmd("docker run -d -p 3000:8080 --add-host=host.docker.internal:host-gateway -v open-webui:/app/backend/data -e OPENAI_API_BASE_URL=http://host.docker.internal:4000/v1 -e OPENAI_API_KEY=sk-local-litellm --name open-webui ghcr.io/open-webui/open-webui:main")
+        self.log("Docker starting. Access at http://localhost:3000")
+
+    def on_closing(self):
+        self.log("Shutting down... Cleaning up background processes.")
+        if self.proxy_process:
+            try: self.proxy_process.terminate()
+            except: pass
+        self.root.destroy()
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = AIStackManager(root)
+    root.mainloop()</code></pre>
+                            <button type="button" onclick="copyToClipboard(this)" class="absolute top-2 right-2 p-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand-500" aria-label="Copy Python GUI script"><i data-feather="copy" class="w-4 h-4"></i></button>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Notification & Back to Top -->
+    <div id="toast" class="fixed bottom-5 right-5 transform translate-y-20 opacity-0 transition-all duration-300 bg-gray-900 dark:bg-black text-white px-4 py-3 rounded-lg shadow-xl flex items-center gap-3 z-50 pointer-events-none no-print">
+        <div class="bg-green-500 rounded-full p-1"><i data-feather="check" class="w-4 h-4 text-white"></i></div>
+        <span class="font-medium text-sm">Copied to clipboard!</span>
+    </div>
+
+    <button type="button" id="back-to-top" onclick="window.scrollTo({top: 0, behavior: 'smooth'})" class="fixed bottom-5 left-5 lg:left-80 p-3 bg-brand-500 text-white rounded-full shadow-lg opacity-0 pointer-events-none transition-all duration-300 hover:bg-brand-600 outline-none focus-visible:ring-2 focus-visible:ring-brand-400 z-40 no-print" aria-label="Back to top">
+        <i data-feather="arrow-up"></i>
+    </button>
+
+    <script>
+        // Initialize Feather Icons
+        feather.replace();
+
+        // Theme Toggle Logic
+        function toggleTheme() {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('color-theme', isDark ? 'dark' : 'light');
+
+            const mobileIcon = document.getElementById('theme-toggle-icon-mobile');
+            const desktopIcon = document.getElementById('theme-toggle-icon-desktop');
+            const iconName = isDark ? 'moon' : 'sun';
+
+            if(mobileIcon) mobileIcon.setAttribute('data-feather', iconName);
+            if(desktopIcon) desktopIcon.setAttribute('data-feather', iconName);
+            feather.replace();
+        }
+
+        // Initialize Theme Icons on Load
+        window.addEventListener('DOMContentLoaded', () => {
+            const isDark = document.documentElement.classList.contains('dark');
+            const iconName = isDark ? 'moon' : 'sun';
+            const mobileIcon = document.getElementById('theme-toggle-icon-mobile');
+            const desktopIcon = document.getElementById('theme-toggle-icon-desktop');
+            if(mobileIcon) mobileIcon.setAttribute('data-feather', iconName);
+            if(desktopIcon) desktopIcon.setAttribute('data-feather', iconName);
+            feather.replace();
+        });
+
+        // Mobile Menu Logic
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+            document.body.classList.toggle('overflow-hidden');
+        }
+
+        // Checklist Progress Logic
+        function loadProgress() {
+            ['check-python', 'check-docker', 'check-keys'].forEach(id => {
+                const el = document.getElementById(id);
+                if(el) el.checked = localStorage.getItem(id) === 'true';
+            });
+            updateProgress();
+        }
+
+        function toggleCheckbox(id) {
+            const checkbox = document.getElementById(id);
+            if(checkbox) {
+                checkbox.checked = !checkbox.checked;
+                updateProgress();
+            }
+        }
+
+        function updateProgress() {
+            let checked = 0;
+            ['check-python', 'check-docker', 'check-keys'].forEach(id => {
+                const el = document.getElementById(id);
+                if(el && el.checked) {
+                    checked++;
+                    localStorage.setItem(id, 'true');
+                } else {
+                    localStorage.setItem(id, 'false');
+                }
+            });
+
+            const pb = document.getElementById('progress-bar');
+            const pt = document.getElementById('progress-text');
+            if(pb && pt) {
+                pb.style.width = `${(checked / 3) * 100}%`;
+                pt.innerText = `${checked}/3`;
+            }
+        }
+
+        // Reading Time & Progress Bar
+        window.addEventListener('load', () => {
+            // Target specific article content for accurate word count
+            const mainContent = document.getElementById('main-content');
+            const text = mainContent ? mainContent.innerText : document.body.innerText;
+            const wordCount = text.split(/\s+/).length;
+            const readingTime = Math.ceil(wordCount / 225);
+            const rt = document.getElementById('read-time');
+            if(rt) rt.innerHTML = `<i data-feather="clock" class="w-3 h-3"></i> ${readingTime} min read`;
+            feather.replace();
+            loadProgress();
+        });
+
+        // Scrollspy & Progress Bar
+        window.addEventListener('scroll', () => {
+            const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+            const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+            const scrolled = (winScroll / height) * 100;
+            const rp = document.getElementById('reading-progress');
+            if(rp) rp.style.width = scrolled + "%";
+
+            const btt = document.getElementById('back-to-top');
+            if(btt) {
+                if (winScroll > 500) {
+                    btt.classList.remove('opacity-0', 'pointer-events-none');
+                } else {
+                    btt.classList.add('opacity-0', 'pointer-events-none');
+                }
+            }
+
+            const sections = document.querySelectorAll("section[id]");
+            let current = "";
+            sections.forEach((section) => {
+                const sectionTop = section.offsetTop;
+                if (pageYOffset >= sectionTop - 150) {
+                    current = section.getAttribute("id");
+                }
+            });
+
+            document.querySelectorAll("nav a[data-scrollspy]").forEach((a) => {
+                a.classList.remove("text-brand-600", "bg-brand-50", "dark:bg-brand-500/10", "dark:text-brand-400");
+                if (a.getAttribute("href") === "#" + current) {
+                    a.classList.add("text-brand-600", "bg-brand-50", "dark:bg-brand-500/10", "dark:text-brand-400");
+                }
+            });
+        });
+
+        // Toast & Clipboard Logic
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            toast.querySelector('span').innerText = message;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => { toast.classList.add('translate-y-20', 'opacity-0'); }, 3000);
+        }
+
+        function copyToClipboard(button) {
+            const pre = button.previousElementSibling;
+            // textContent safely strips the HTML span tags from the YAML syntax highlighter
+            const text = pre.textContent;
+
+            const handleSuccess = () => {
+                showToast("Copied to clipboard!");
+                // Safely swap innerHTML to prevent Feather from crashing on the SVG overwrite
+                button.innerHTML = '<i data-feather="check" class="w-4 h-4 text-green-500"></i>';
+                feather.replace();
+                setTimeout(() => {
+                    button.innerHTML = '<i data-feather="copy" class="w-4 h-4 text-gray-300"></i>';
+                    feather.replace();
+                }, 2000);
+            };
+
+            const handleFailure = () => showToast("Failed to copy. Try selecting manually.");
+
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(handleSuccess).catch(handleFailure);
+            } else {
+                let textArea = document.createElement("textarea");
+                textArea.value = text;
+                textArea.style.position = "fixed";
+                textArea.style.left = "-999999px";
+                textArea.style.top = "-999999px";
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                try { document.execCommand('copy') ? handleSuccess() : handleFailure(); }
+                catch (err) { handleFailure(); }
+                textArea.remove();
+            }
+        }
+
+        const allModels = [
+            { id: 'groq', name: 'Groq (Llama 3.1 70B)', desc: 'The king of speed. Perfect for primary chat and coding.', tags: ['fast'], speed: '~800 t/s', link: 'https://console.groq.com/keys', envKey: 'GROQ_API_KEY',
+              snippet: `  - model_name: groq-llama-3
+    litellm_params:
+      model: groq/llama-3.1-70b-versatile
+      api_key: os.environ/GROQ_API_KEY`},
+            { id: 'openrouter', name: 'OpenRouter (Auto)', desc: 'Routes to free endpoints. Excellent fallback.', tags: [], speed: 'Variable', link: 'https://openrouter.ai/keys', envKey: 'OPENROUTER_API_KEY',
+              snippet: `  - model_name: openrouter-free
+    litellm_params:
+      model: openrouter/auto
+      api_key: os.environ/OPENROUTER_API_KEY`},
+            { id: 'google', name: 'Google AI Studio (Gemini)', desc: 'Huge 1M context window. Great for document analysis.', tags: [], speed: '~50 t/s', link: 'https://aistudio.google.com/app/apikey', envKey: 'GEMINI_API_KEY',
+              snippet: `  - model_name: gemini-flash
+    litellm_params:
+      model: gemini/gemini-1.5-flash
+      api_key: os.environ/GEMINI_API_KEY`},
+            { id: 'github', name: 'GitHub Models (GPT-4o)', desc: 'Free access to OpenAI and Anthropic for devs.', tags: ['fast'], speed: 'Rate Limited', link: 'https://github.com/marketplace/models', envKey: 'GITHUB_API_KEY',
+              snippet: `  - model_name: github-gpt4o
+    litellm_params:
+      model: github/gpt-4o
+      api_key: os.environ/GITHUB_API_KEY`},
+            { id: 'nvidia', name: 'NVIDIA NIM (DeepSeek-R1)', desc: 'Fast inference for reasoning models.', tags: ['fast', 'reasoning'], speed: '~500 t/s', link: 'https://build.nvidia.com/', envKey: 'NVIDIA_NIM_API_KEY',
+              snippet: `  - model_name: nvidia-deepseek
+    litellm_params:
+      model: nvidia/deepseek-r1
+      api_key: os.environ/NVIDIA_NIM_API_KEY`},
+            { id: 'cerebras', name: 'Cerebras (Llama 3.1)', desc: 'Mind-bending speed. Fastest API available.', tags: ['fast'], speed: '~2,000 t/s', link: 'https://cloud.cerebras.ai/', envKey: 'CEREBRAS_API_KEY',
+              snippet: `  - model_name: cerebras-llama
+    litellm_params:
+      model: cerebras/llama3.1-70b
+      api_key: os.environ/CEREBRAS_API_KEY`},
+            { id: 'together', name: 'Together AI (R1 Distill)', desc: 'Generous free tier for open weights.', tags: ['reasoning'], speed: '~150 t/s', link: 'https://api.together.ai/', envKey: 'TOGETHER_API_KEY',
+              snippet: `  - model_name: together-r1
+    litellm_params:
+      model: together_ai/deepseek-ai/DeepSeek-R1-Distill-Llama-70B
+      api_key: os.environ/TOGETHER_API_KEY`},
+            { id: 'ollama', name: 'Ollama (Local Llama 3)', desc: '100% private. Runs entirely on your hardware.', tags: ['local'], speed: 'Hardware Dep.', link: 'https://ollama.com/', envKey: '',
+              snippet: `  - model_name: local-llama
+    litellm_params:
+      model: ollama/llama3
+      api_base: http://localhost:11434`},
+            { id: 'mistral', name: 'Mistral API (Nemo)', desc: 'Excellent European open weight models.', tags: [], speed: '~100 t/s', link: 'https://console.mistral.ai/', envKey: 'MISTRAL_API_KEY',
+              snippet: `  - model_name: mistral-nemo
+    litellm_params:
+      model: mistral/open-mistral-nemo
+      api_key: os.environ/MISTRAL_API_KEY`},
+            { id: 'cohere', name: 'Cohere (Command R)', desc: 'Specialized for RAG and enterprise tasks.', tags: [], speed: '~80 t/s', link: 'https://dashboard.cohere.com/', envKey: 'COHERE_API_KEY',
+              snippet: `  - model_name: cohere-command
+    litellm_params:
+      model: cohere/command-r
+      api_key: os.environ/COHERE_API_KEY`},
+            { id: 'sambanova', name: 'SambaNova (Llama 3.1)', desc: 'High speed enterprise grade inference.', tags: ['fast'], speed: '~1,000 t/s', link: 'https://cloud.sambanova.ai/', envKey: 'SAMBANOVA_API_KEY',
+              snippet: `  - model_name: sambanova-llama
+    litellm_params:
+      model: sambanova/Meta-Llama-3.1-70B-Instruct
+      api_key: os.environ/SAMBANOVA_API_KEY`},
+            { id: 'deepinfra', name: 'DeepInfra (Llama 3)', desc: 'Very affordable, offers a generous free grant.', tags: [], speed: '~120 t/s', link: 'https://deepinfra.com/', envKey: 'DEEPINFRA_API_KEY',
+              snippet: `  - model_name: deepinfra-llama
+    litellm_params:
+      model: deepinfra/meta-llama/Meta-Llama-3-70B-Instruct
+      api_key: os.environ/DEEPINFRA_API_KEY`},
+            { id: 'cloudflare', name: 'Cloudflare Workers AI', desc: 'Runs models on the edge. Great free tier.', tags: [], speed: 'Variable', link: 'https://developers.cloudflare.com/workers-ai/', envKey: 'CLOUDFLARE_API_KEY',
+              snippet: `  - model_name: cloudflare-llama
+    litellm_params:
+      model: cloudflare/@cf/meta/llama-3-8b-instruct
+      api_key: os.environ/CLOUDFLARE_API_KEY`},
+            { id: 'huggingface', name: 'HuggingFace (Zephyr)', desc: 'Access to thousands of community models.', tags: [], speed: 'Variable', link: 'https://huggingface.co/settings/tokens', envKey: 'HUGGINGFACE_API_KEY',
+              snippet: `  - model_name: hf-zephyr
+    litellm_params:
+      model: huggingface/HuggingFaceH4/zephyr-7b-beta
+      api_key: os.environ/HUGGINGFACE_API_KEY`}
+        ];
+
+        const selectedModels = new Map();
+
+        function renderModels(filter = 'all') {
+            const tbody = document.getElementById('models-table-body');
+            tbody.innerHTML = '';
+
+            allModels.forEach(m => {
+                if (filter !== 'all' && !m.tags.includes(filter)) return;
+
+                const isSelected = selectedModels.has(m.id);
+                const btnClass = isSelected
+                    ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700"
+                    : "bg-brand-50 dark:bg-brand-900/20 text-brand-700 dark:text-brand-400 hover:bg-brand-100 dark:hover:bg-brand-900/40 border-brand-200 dark:border-brand-800";
+                const btnIcon = isSelected ? "check" : "plus";
+                const btnText = isSelected ? "Added" : "Config";
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-50/50 dark:hover:bg-dark-800/50 transition-colors";
+                tr.innerHTML = `
+                    <td class="px-6 py-4">
+                        <div class="font-bold text-gray-900 dark:text-white flex items-center gap-2">${m.name}</div>
+                        <div class="text-xs text-gray-500 mt-1 max-w-xs whitespace-normal">${m.desc}</div>
+                    </td>
+                    <td class="px-6 py-4 hidden md:table-cell">
+                        <div class="flex items-center gap-2">
+                            ${m.tags.includes('fast') ? '<span class="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-500 text-[10px] uppercase font-bold rounded">Fast</span>' : ''}
+                            ${m.tags.includes('reasoning') ? '<span class="px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-400 text-[10px] uppercase font-bold rounded">R1</span>' : ''}
+                            ${m.tags.includes('local') ? '<span class="px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-[10px] uppercase font-bold rounded">Local</span>' : ''}
+                            <span class="text-xs font-mono text-gray-500 font-bold">${m.speed}</span>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-right">
+                        <div class="flex items-center justify-end gap-2">
+                            <a href="${m.link}" target="_blank" rel="noopener noreferrer" class="p-1.5 text-gray-500 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-dark-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors outline-none focus-visible:ring-2 focus-visible:ring-brand-500" title="Get API Key"><i data-feather="external-link" class="w-4 h-4"></i></a>
+                            <button type="button" onclick="toggleModel('${m.id}')" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded border transition-colors ${btnClass} outline-none focus-visible:ring-2 focus-visible:ring-brand-500">
+                                <i data-feather="${btnIcon}" class="w-3.5 h-3.5"></i> ${btnText}
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            feather.replace();
+        }
+
+        function filterModels(tag, btnElement) {
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.remove('bg-brand-500', 'text-white');
+                btn.classList.add('bg-gray-200', 'dark:bg-dark-800', 'text-gray-700', 'dark:text-gray-300');
+            });
+
+            // Safely apply active state to the clicked button without relying on global event object
+            if (btnElement) {
+                btnElement.classList.remove('bg-gray-200', 'dark:bg-dark-800', 'text-gray-700', 'dark:text-gray-300');
+                btnElement.classList.add('bg-brand-500', 'text-white');
+            }
+
+            renderModels(tag);
+        }
+
+        function toggleModel(id) {
+            const model = allModels.find(m => m.id === id);
+            if (!model) return;
+
+            if (selectedModels.has(id)) {
+                selectedModels.delete(id);
+            } else {
+                selectedModels.set(id, model);
+            }
+
+            const activeFilter = document.querySelector('.filter-btn.bg-brand-500').innerText.toLowerCase();
+            let tag = 'all';
+            if(activeFilter.includes('fast')) tag = 'fast';
+            if(activeFilter.includes('reasoning')) tag = 'reasoning';
+            if(activeFilter.includes('local')) tag = 'local';
+
+            renderModels(tag);
+            renderConfig();
+        }
+
+        function clearConfig() {
+            selectedModels.clear();
+            renderModels('all');
+            renderConfig();
+        }
+
+        function renderConfig() {
+            const configOut = document.getElementById('config-output');
+            const envOut = document.getElementById('env-output');
+
+            if (selectedModels.size === 0) {
+                configOut.innerHTML = `<span class="text-gray-500"># Select models from the Cheat Sheet below...</span>`;
+                envOut.innerHTML = `<span class="text-gray-500"># Associated API Keys will appear here...</span>`;
+                return;
+            }
+
+            let yaml = `model_list:\n`;
+            let env = `# LiteLLM Environment Variables\n`;
+
+            selectedModels.forEach(model => {
+                yaml += `${model.snippet}\n`;
+                if (model.envKey) {
+                    env += `${model.envKey}="your_${model.id}_key_here"\n`;
+                }
+            });
+
+            let formattedYaml = yaml.replace(/model_list:/g, '<span class="text-purple-400">model_list:</span>')
+                                    .replace(/- model_name:/g, '- <span class="text-brand-400">model_name:</span>')
+                                    .replace(/litellm_params:/g, '<span class="text-purple-400">litellm_params:</span>')
+                                    .replace(/model:/g, '<span class="text-green-400">model:</span>')
+                                    .replace(/api_key:/g, '<span class="text-green-400">api_key:</span>')
+                                    .replace(/api_base:/g, '<span class="text-green-400">api_base:</span>');
+
+            let formattedEnv = env.replace(/(.*)=/g, '<span class="text-brand-400">$1</span>=')
+                                  .replace(/"(.*)"/g, '"<span class="text-green-400">$1</span>"');
+
+            configOut.innerHTML = formattedYaml;
+            envOut.innerHTML = formattedEnv;
+        }
+
+        let searchData = [];
+
+        window.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+                e.preventDefault();
+                openSearch();
+            }
+            if (e.key === 'Escape') closeSearch();
+        });
+
+        function openSearch() {
+            const modal = document.getElementById('search-modal');
+            modal.classList.remove('hidden');
+            document.getElementById('search-input').focus();
+
+            if(searchData.length === 0) {
+                document.querySelectorAll('section h2').forEach(el => {
+                    const section = el.closest('section');
+                    if(section && section.id) {
+                        // Strip a leading numbered badge (e.g. "9 ") if present; leaves untouched titles as-is.
+                        const title = el.innerText.trim().replace(/^\d+\s+/, '');
+                        searchData.push({ title, id: section.id });
+                    }
+                });
+            }
+        }
+
+        function closeSearch() {
+            document.getElementById('search-modal').classList.add('hidden');
+            document.getElementById('search-input').value = '';
+            document.getElementById('search-results').innerHTML = '';
+        }
+
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            const resultsDiv = document.getElementById('search-results');
+            if(!query) { resultsDiv.innerHTML = ''; return; }
+
+            const matches = searchData.filter(item => item.title.toLowerCase().includes(query));
+            resultsDiv.innerHTML = matches.map(m => `
+                <a href="#${m.id}" onclick="closeSearch()" class="block p-3 hover:bg-gray-100 dark:hover:bg-dark-700 rounded-lg transition-colors border-b border-gray-100 dark:border-gray-800 last:border-0 outline-none focus-visible:bg-gray-100 dark:focus-visible:bg-dark-700">
+                    <div class="text-brand-500 text-xs font-semibold uppercase tracking-wider mb-1">Section</div>
+                    <div class="text-gray-900 dark:text-white font-medium">${m.title}</div>
+                </a>
+            `).join('');
+            if(matches.length===0) resultsDiv.innerHTML = '<div class="p-4 text-center text-gray-500 text-sm">No results found.</div>';
+        });
+
+        // Init
+        renderModels();
+    </script>
+</body>
+</html>
